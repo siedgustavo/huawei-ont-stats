@@ -15,7 +15,7 @@ import sys
 import time
 from urllib.error import URLError
 
-from router_info import login, get_wan_status
+from .router_info import login, get_wan_status
 
 
 # ---------------------------------------------------------------------------

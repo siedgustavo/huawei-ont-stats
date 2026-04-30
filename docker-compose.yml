@@ -8,4 +8,4 @@ services:
       - API_USER=Epadmin
       - API_PASS=adminEp
     restart: unless-stopped
-    command: python api_server.py --host=0.0.0.0 --port=8000 --router-host=192.168.18.1 --user=Epadmin --pass=adminEp
+    command: python -m routerstats.api_server --host=0.0.0.0 --port=8000 --router-host=192.168.18.1 --user=Epadmin --pass=adminEp

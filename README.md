@@ -119,18 +119,18 @@ curl -s http://localhost:8000/status | python3 -m json.tool
 ### Full router status
 
 ```bash
-python3 router_info.py
-python3 router_info.py --host 192.168.18.1 --user Epadmin --pass adminEp
-python3 router_info.py --json
-python3 router_info.py --watch 30
+python3 -m routerstats.router_info
+python3 -m routerstats.router_info --host 192.168.18.1 --user Epadmin --pass adminEp
+python3 -m routerstats.router_info --json
+python3 -m routerstats.router_info --watch 30
 ```
 
 ### WAN status only
 
 ```bash
-python3 wan_status.py
-python3 wan_status.py --json
-python3 wan_status.py --watch 10
+python3 -m routerstats.wan_status
+python3 -m routerstats.wan_status --json
+python3 -m routerstats.wan_status --watch 10
 ```
 
 ### CLI arguments
@@ -148,15 +148,17 @@ python3 wan_status.py --watch 10
 ## Project structure
 
 ```
-api_server.py          # HTTP API server (GET /status) with session management and caching
-router_info.py         # Core library: login, data fetching, parsing, and CLI dashboard
-wan_status.py          # WAN-only CLI (imports from router_info.py)
+routerstats/               # Python package
+  __init__.py
+  router_info.py           # Core: login, data fetching, parsing, CLI dashboard
+  api_server.py            # HTTP API server (GET /status) with session + cache
+  wan_status.py            # WAN-only CLI
 tests/
-  test_api_server.py   # Unit tests for the API server (17 tests)
-Dockerfile             # Docker image definition
-docker-compose.yml     # Docker Compose service configuration
-.dockerignore          # Excludes .venv, tests, docs from Docker build
-requirements.txt       # Python dependencies (stdlib only)
+  test_api_server.py       # Unit tests (17 tests)
+Dockerfile                 # Docker image definition
+docker-compose.yml         # Docker Compose service configuration
+.dockerignore              # Excludes .venv, tests, docs from Docker build
+requirements.txt           # Python dependencies (stdlib only)
 ```
 
 ---

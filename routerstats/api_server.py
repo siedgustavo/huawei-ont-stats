@@ -27,7 +27,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-from router_info import (
+from .router_info import (
     login,
     get_device_info,
     get_ont_state,

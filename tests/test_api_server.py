@@ -2,8 +2,6 @@
 """Tests for api_server.py – session management, caching, and HTTP handler."""
 
 import json
-import os
-import sys
 import threading
 import time
 import unittest
@@ -11,10 +9,7 @@ from http.server import HTTPServer
 from unittest.mock import patch, MagicMock
 from urllib.request import urlopen
 
-# Allow imports from the project root
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from api_server import (
+from routerstats.api_server import (
     RouterSession,
     DataCache,
     StatusHandler,
@@ -66,7 +61,7 @@ class TestRouterSession(unittest.TestCase):
         global _login_call_count
         _login_call_count = 0
 
-    @patch("api_server.login", side_effect=_fake_login)
+    @patch("routerstats.api_server.login", side_effect=_fake_login)
     def test_first_ensure_logs_in(self, mock_login):
         s = RouterSession("192.168.18.1", "user", "pass")
         opener, token = s.ensure()
@@ -74,7 +69,7 @@ class TestRouterSession(unittest.TestCase):
         self.assertEqual(opener, FAKE_OPENER)
         self.assertEqual(mock_login.call_count, 1)
 
-    @patch("api_server.login", side_effect=_fake_login)
+    @patch("routerstats.api_server.login", side_effect=_fake_login)
     def test_ensure_reuses_session(self, mock_login):
         s = RouterSession("192.168.18.1", "user", "pass")
         s.ensure()
@@ -83,7 +78,7 @@ class TestRouterSession(unittest.TestCase):
         # Only one login despite three ensure() calls
         self.assertEqual(mock_login.call_count, 1)
 
-    @patch("api_server.login", side_effect=_fake_login)
+    @patch("routerstats.api_server.login", side_effect=_fake_login)
     def test_ensure_relogins_after_ttl(self, mock_login):
         s = RouterSession("192.168.18.1", "user", "pass")
         s.ensure()
@@ -92,7 +87,7 @@ class TestRouterSession(unittest.TestCase):
         s.ensure()
         self.assertEqual(mock_login.call_count, 2)
 
-    @patch("api_server.login", side_effect=_fake_login)
+    @patch("routerstats.api_server.login", side_effect=_fake_login)
     def test_invalidate_forces_relogin(self, mock_login):
         s = RouterSession("192.168.18.1", "user", "pass")
         s.ensure()
@@ -140,21 +135,21 @@ class TestDataCache(unittest.TestCase):
 # Full HTTP endpoint test
 # ---------------------------------------------------------------------------
 _ALL_PATCHES = {
-    "api_server.login": _fake_login,
-    "api_server.get_device_info": lambda o, h: FAKE_DEVICE,
-    "api_server.get_ont_state": lambda o, h: FAKE_ONT,
-    "api_server.get_optic_info": lambda o, h: FAKE_OPTIC,
-    "api_server.get_wan_status": lambda o, h, t: FAKE_WAN,
-    "api_server.get_wan_stats": lambda o, h: FAKE_WAN_STATS,
-    "api_server.get_eth_info": lambda o, h: FAKE_ETH,
-    "api_server.get_wlan_info": lambda o, h: FAKE_WLAN,
-    "api_server.get_lan_clients": lambda o, h, t: FAKE_CLIENTS,
+    "routerstats.api_server.login": _fake_login,
+    "routerstats.api_server.get_device_info": lambda o, h: FAKE_DEVICE,
+    "routerstats.api_server.get_ont_state": lambda o, h: FAKE_ONT,
+    "routerstats.api_server.get_optic_info": lambda o, h: FAKE_OPTIC,
+    "routerstats.api_server.get_wan_status": lambda o, h, t: FAKE_WAN,
+    "routerstats.api_server.get_wan_stats": lambda o, h: FAKE_WAN_STATS,
+    "routerstats.api_server.get_eth_info": lambda o, h: FAKE_ETH,
+    "routerstats.api_server.get_wlan_info": lambda o, h: FAKE_WLAN,
+    "routerstats.api_server.get_lan_clients": lambda o, h, t: FAKE_CLIENTS,
 }
 
 
 def _start_test_server():
     """Start a test HTTP server on a random port and return (httpd, port)."""
-    from api_server import RouterSession, DataCache
+    from routerstats.api_server import RouterSession, DataCache
     session = RouterSession("192.168.18.1", "user", "pass")
     session.ensure()
     httpd = HTTPServer(("127.0.0.1", 0), StatusHandler)
@@ -266,7 +261,7 @@ class TestCacheSeparation(unittest.TestCase):
 
     def test_static_data_not_refetched(self):
         """After cache fill, expiring dynamic TTL should not refetch device/wlan."""
-        from api_server import RouterSession, DataCache
+        from routerstats.api_server import RouterSession, DataCache
         session = RouterSession("192.168.18.1", "user", "pass")
         cache = DataCache()
         httpd = HTTPServer(("127.0.0.1", 0), StatusHandler)
@@ -290,16 +285,16 @@ class TestCacheSeparation(unittest.TestCase):
 
             # Track which fetchers are called
             call_log = []
-            original_fetchers_wan = _ALL_PATCHES["api_server.get_wan_status"]
+            original_fetchers_wan = _ALL_PATCHES["routerstats.api_server.get_wan_status"]
 
             def logging_wan(o, h, t):
                 call_log.append("wan")
                 return original_fetchers_wan(o, h, t)
 
-            with patch("api_server.get_wan_status", side_effect=logging_wan), \
-                 patch("api_server.get_device_info", side_effect=lambda o, h: (_ for _ in ()).throw(
+            with patch("routerstats.api_server.get_wan_status", side_effect=logging_wan), \
+                 patch("routerstats.api_server.get_device_info", side_effect=lambda o, h: (_ for _ in ()).throw(
                      AssertionError("device should NOT be refetched"))) if False else \
-                 patch("api_server.get_device_info") as mock_device:
+                 patch("routerstats.api_server.get_device_info") as mock_device:
                 mock_device.side_effect = lambda o, h: FAKE_DEVICE
                 with urlopen(url) as resp:
                     data = json.loads(resp.read())
@@ -337,8 +332,8 @@ class TestSessionRetry(unittest.TestCase):
             return FAKE_DEVICE
 
         patches = dict(_ALL_PATCHES)
-        patches["api_server.login"] = counting_login
-        patches["api_server.get_device_info"] = failing_then_ok_device
+        patches["routerstats.api_server.login"] = counting_login
+        patches["routerstats.api_server.get_device_info"] = failing_then_ok_device
 
         patchers = []
         for target, fn in patches.items():
@@ -347,7 +342,7 @@ class TestSessionRetry(unittest.TestCase):
             patchers.append(p)
 
         try:
-            from api_server import RouterSession, DataCache
+            from routerstats.api_server import RouterSession, DataCache
             session = RouterSession("192.168.18.1", "user", "pass")
             cache = DataCache()
             httpd = HTTPServer(("127.0.0.1", 0), StatusHandler)
