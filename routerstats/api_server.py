@@ -26,7 +26,7 @@ import json as _json
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from .router_info import (
     login,
@@ -235,7 +235,8 @@ def run_server(host, port, router_host, username, password):
     print(f"Connecting to router at {router_host} …")
     session.ensure()
 
-    httpd = HTTPServer((host, port), StatusHandler)
+    httpd = ThreadingHTTPServer((host, port), StatusHandler)
+    httpd.daemon_threads = True
     httpd.router_host = router_host
     httpd.session = session
     httpd.cache = cache

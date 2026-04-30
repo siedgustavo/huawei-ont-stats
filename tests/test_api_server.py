@@ -5,7 +5,7 @@ import json
 import threading
 import time
 import unittest
-from http.server import HTTPServer
+from http.server import ThreadingHTTPServer as HTTPServer
 from unittest.mock import patch, MagicMock
 from urllib.request import urlopen
 
