@@ -2,12 +2,17 @@
 """Tests for api_server.py – session management, caching, and HTTP handler."""
 
 import json
+import os
+import sys
 import threading
 import time
 import unittest
 from http.server import HTTPServer
 from unittest.mock import patch, MagicMock
 from urllib.request import urlopen
+
+# Allow imports from the project root
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api_server import (
     RouterSession,

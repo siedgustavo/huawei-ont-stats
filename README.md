@@ -148,13 +148,15 @@ python3 wan_status.py --watch 10
 ## Project structure
 
 ```
-api_server.py        # HTTP API server (GET /status) with session management and caching
-router_info.py       # Core library: login, data fetching, and parsing for all router sections
-wan_status.py        # Standalone WAN status script
-test_api_server.py   # Unit tests for the API server
-Dockerfile           # Docker image definition
-docker-compose.yml   # Docker Compose service configuration
-requirements.txt     # Python dependencies (stdlib only)
+api_server.py          # HTTP API server (GET /status) with session management and caching
+router_info.py         # Core library: login, data fetching, parsing, and CLI dashboard
+wan_status.py          # WAN-only CLI (imports from router_info.py)
+tests/
+  test_api_server.py   # Unit tests for the API server (17 tests)
+Dockerfile             # Docker image definition
+docker-compose.yml     # Docker Compose service configuration
+.dockerignore          # Excludes .venv, tests, docs from Docker build
+requirements.txt       # Python dependencies (stdlib only)
 ```
 
 ---
