@@ -121,12 +121,19 @@ def get_device_info(opener, host: str) -> dict:
     base = f"http://{host}"
     raw = _get(opener, f"{base}/html/ssmp/deviceinfo/deviceinfo.asp").decode("utf-8", errors="replace")
 
+    # stDeviceInfo(domain, SerialNumber, HardwareVersion, SoftwareVersion,
+    #              ModelName, VendorID, ReleaseTime, Mac, Description,
+    #              ManufactureInfo, DeviceAlias)
+    a = _parse_constructor(raw, "stDeviceInfo")
+
     result = {
-        "product_name": _js_var(raw, "productName"),
-        "firmware":     _js_var(raw, "webFirmwareVersion") or _js_var(raw, "FirmwareVersion") or _js_var(raw, "SoftwareVersion"),
-        "hardware":     _js_var(raw, "HardwareVersion") or _js_var(raw, "webHardwareVersion"),
-        "serial":       _js_var(raw, "SerialNumber") or _js_var(raw, "webSerialNumber"),
-        "uptime":       _js_var(raw, "UpTime") or _js_var(raw, "DeviceUpTime"),
+        "product_name": a[4] if len(a) > 4 else "",
+        "firmware":     a[3] if len(a) > 3 else "",
+        "hardware":     a[2] if len(a) > 2 else "",
+        "serial":       a[1] if len(a) > 1 else "",
+        "mac":          a[7] if len(a) > 7 else "",
+        "description":  a[8] if len(a) > 8 else "",
+        "uptime":       _js_var(raw, "dev_uptime"),
     }
 
     # Fallback productName desde wan_list_info.asp
