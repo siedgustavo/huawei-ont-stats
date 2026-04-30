@@ -25,6 +25,7 @@ import argparse
 import json as _json
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from .router_info import (
@@ -182,14 +183,34 @@ class StatusHandler(BaseHTTPRequestHandler):
         if not stale_keys:
             return result
 
-        # 2. Fetch stale sections, retry once on session error
+        # 2. Fetch stale sections in parallel, retry once on session error
         for attempt in range(2):
             try:
                 opener, token = session.ensure()
-                for key in stale_keys:
-                    value = _FETCHERS[key](opener, host, token)
-                    cache.put(key, value)
-                    result[key] = value
+                t0 = time.monotonic()
+                errors = {}
+
+                def _fetch(key):
+                    return key, _FETCHERS[key](opener, host, token)
+
+                with ThreadPoolExecutor(max_workers=len(stale_keys)) as pool:
+                    futures = {pool.submit(_fetch, k): k for k in stale_keys}
+                    for fut in as_completed(futures):
+                        key = futures[fut]
+                        try:
+                            _, value = fut.result()
+                            cache.put(key, value)
+                            result[key] = value
+                        except Exception as exc:
+                            errors[key] = exc
+
+                elapsed = time.monotonic() - t0
+                print(f"[fetch] {len(stale_keys)} sections in {elapsed:.1f}s"
+                      f" (parallel) — stale: {stale_keys}")
+
+                if errors:
+                    raise list(errors.values())[0]
+
                 return result
             except Exception:
                 if attempt == 0:
