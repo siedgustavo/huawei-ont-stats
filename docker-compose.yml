@@ -9,3 +9,12 @@ services:
       - API_PASS=adminEp
     restart: unless-stopped
     command: python -m routerstats.api_server --host=0.0.0.0 --port=8000 --router-host=192.168.18.1 --user=Epadmin --pass=adminEp
+
+  router-reconciler:
+    build: .
+    restart: unless-stopped
+    command: >
+      python -m routerstats.reconcile
+      --host=192.168.18.1 --user=Epadmin --pass=adminEp
+      --watch=60
+      --dhcp-mac=08:55:31:A7:C7:F5 --dhcp-ip=192.168.18.2 --dmz-ip=192.168.18.2

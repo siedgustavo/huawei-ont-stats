@@ -13,6 +13,8 @@ Reverse-engineered from the router's ASP-based web UI. Uses only the Python stan
 | `api_server.py` | HTTP API server (`GET /status`) — returns all router data as JSON. Runs in Docker. |
 | `router_info.py` | Full dashboard: Device info, ONT/PON state, Optical (SFP) readings, WAN + traffic stats, ETH ports, WLAN state, LAN DHCP clients |
 | `wan_status.py` | Focused WAN-only view: IP WAN / PPPoE status, IP address, gateway, DNS, uptime, errors |
+| `router_config.py` | Read/write helpers for WLAN enable, DHCP static reservations, and DMZ mapping |
+| `reconcile.py` | Declarative reconciler: watches WiFi/DHCP-reservation/DMZ and reapplies the desired state whenever the router (or the ISP's OLT) resets it |
 
 ### API server highlights
 
@@ -27,6 +29,48 @@ Both `router_info.py` and `wan_status.py` support:
 - **Human-readable output** (default) with status icons
 - **JSON output** via `--json`
 - **Continuous polling** via `--watch N` (refresh every N seconds)
+
+---
+
+## Declarative config reconciliation (WiFi off / DHCP reservation / DMZ)
+
+Some ISP-managed ONTs (like this ISP's provisioning of the EG8021V5) have the
+OLT push back its own configuration on every reboot, silently reverting
+manual changes. `reconcile.py` keeps three settings pinned to a desired
+state by polling the router and reapplying drift:
+
+- WiFi (2.4GHz + 5GHz) enabled/disabled
+- A DHCP static reservation (MAC → IP)
+- The DMZ host mapping (IP)
+
+```bash
+# One-shot check (good for cron)
+python3 -m routerstats.reconcile
+
+# Continuous daemon, checks every 60s
+python3 -m routerstats.reconcile --watch 60
+
+# Override the defaults
+python3 -m routerstats.reconcile --watch 60 \
+  --dhcp-mac 08:55:31:A7:C7:F5 --dhcp-ip 192.168.18.2 --dmz-ip 192.168.18.2 \
+  --wifi-enabled   # pass this to keep WiFi ON instead of forcing it off
+```
+
+For local/dev use, run it as a persistent service via
+`docker compose up -d router-reconciler` (already wired up in
+`docker-compose.yml`).
+
+In production this runs as a Kubernetes `CronJob` every 5 minutes instead of
+a long-running pod — cheap enough on a home router, and fast enough to catch
+drift after a reboot without leaving the DMZ/DHCP reservation down for long.
+The manifests (namespace, sealed credentials, `CronJob`) live in the
+`k8s-sied-ar` GitOps repo under `deployments/routerstats/k8s`, deployed via
+ArgoCD — see `DEPLOYMENT.md`.
+
+The write endpoints (`set.cgi`/`add.cgi` under `/html/amp/wlanbasic/`,
+`/html/bbsp/dhcpstatic/`, `/html/bbsp/dmz/`) were reversed the same way as
+the read-only endpoints below — by capturing the browser's real requests
+while performing each change once through the router's web UI.
 
 ---
 

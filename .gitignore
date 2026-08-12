@@ -17,6 +17,7 @@ env/
 # Environment / secrets
 .env
 *.env
+*.har
 
 # IDE
 .vscode/
