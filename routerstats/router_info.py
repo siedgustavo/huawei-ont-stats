@@ -94,7 +94,7 @@ def login(host: str, username: str, password: str):
     jar = CookieJar()
     opener = build_opener(HTTPCookieProcessor(jar))
 
-    pre_token = _get(opener, f"{base}/html/ssmp/common/getRandString.asp").decode("utf-8", errors="replace").strip()
+    pre_token = _get(opener, f"{base}/html/ssmp/common/getRandString.asp").decode("utf-8-sig", errors="replace").strip()
     if not pre_token:
         raise RuntimeError("No se pudo obtener token pre-login.")
 
@@ -106,7 +106,7 @@ def login(host: str, username: str, password: str):
         "x.X_HW_Token": pre_token,
     }, headers={"Referer": f"{base}/"})
 
-    session_token = _get(opener, f"{base}/html/ssmp/common/GetRandToken.asp").decode("utf-8", errors="replace").strip()
+    session_token = _get(opener, f"{base}/html/ssmp/common/GetRandToken.asp").decode("utf-8-sig", errors="replace").strip()
     if not session_token or "<html" in session_token.lower():
         raise RuntimeError("Login fallido. Verificá usuario/contraseña.")
 
@@ -334,8 +334,12 @@ def get_wlan_info(opener, host: str) -> dict:
     raw = _get(opener, f"{base}/html/amp/wlaninfo/wlaninfo.asp",
                referer=f"{base}/").decode("utf-8", errors="replace")
 
-    enabled_2g = _js_var(raw, "wlanEnbl") != "0"
-    enabled_5g = _js_var(raw, "radioEnable1") not in ("0", "")
+    # Verificado empíricamente contra el router real: "radioEnable1" refleja
+    # el estado del radio 2.4GHz (RadioInst=1) y "wlanEnbl" el de 5GHz
+    # (RadioInst=2) — los nombres de las variables JS del firmware son
+    # confusos/están invertidos respecto a lo que uno esperaría.
+    enabled_2g = _js_var(raw, "radioEnable1") not in ("0", "")
+    enabled_5g = _js_var(raw, "wlanEnbl") != "0"
     chip_2g    = _js_var(raw, "wlanChipType2G")
     chip_5g    = _js_var(raw, "wlanChipType5G")
     chan_info   = _js_var(raw, "ChanInfo")
